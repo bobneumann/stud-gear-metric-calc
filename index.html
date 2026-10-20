@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stud Gear Metric Thread Calculator</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --border: #2a2f3a; --fg: #e6e8eb;
+    --muted: #9aa3af; --accent: #4f8cff; --good: #3ecf8e; --warn: #e0a93e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    max-width: 920px; margin: 0 auto; padding: 24px 16px 60px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 24px; }
+  p { color: var(--muted); }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea {
+    width: 100%; background: #0d0f14; color: var(--fg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px; font-size: 0.95rem; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 44px; font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 0.88rem; margin-top: 10px; }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 10px 20px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 16px;
+  }
+  button:hover { filter: brightness(1.1); }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.92rem; }
+  th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+  tr:hover { background: #1d212b; }
+  .free { color: var(--good); font-weight: 600; }
+  .gearset { font-size: 1.05rem; margin-top: 14px; }
+  .gearset b { color: var(--accent); }
+  .err { color: #ff6b6b; font-size: 0.9rem; margin-top: 10px; }
+  footer { color: var(--muted); font-size: 0.82rem; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 16px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>Stud Gear Metric Thread Calculator</h1>
+<p class="subtitle">Pick a handful of replacement stud ("main/top") gears for an imperial quick-change lathe that, combined with the existing TPI dial, most nearly approximate standard metric thread pitches.</p>
+
+<div class="panel">
+  <p style="margin-top:0">On a quick-change gearbox lathe, the dial's TPI reading is only exact for the factory stud gear. Swap the stud gear for one with <b>R</b> teeth (factory has <b>F</b> teeth) and the whole gear train scales by R/F, so the pitch actually cut at dial setting <b>T</b> is:</p>
+  <p style="text-align:center; font-size:1.1rem; color:var(--fg)">pitch (mm) = 25.4 &times; (R / F) / T</p>
+  <p style="margin-bottom:0">This tool scans every candidate replacement gear against every TPI setting your gearbox offers, and picks a small set of gears that together get closest to the standard metric pitches &mdash; biased toward fewer teeth to cut, and treating your factory gear as free (no cutting required).</p>
+</div>
+
+<div class="panel">
+  <div class="grid">
+    <div>
+      <label for="factory">Factory stud gear (teeth)</label>
+      <input type="number" id="factory" value="24" min="1">
+    </div>
+    <div>
+      <label for="low">Min replacement teeth</label>
+      <input type="number" id="low" value="" placeholder="auto: factory-5, min 16">
+    </div>
+    <div>
+      <label for="high">Max replacement teeth</label>
+      <input type="number" id="high" value="52">
+    </div>
+    <div>
+      <label for="count">Gears to pick</label>
+      <input type="number" id="count" value="5" min="1" max="7">
+    </div>
+    <div>
+      <label for="tolerance">Error tolerance band (%)</label>
+      <input type="number" id="tolerance" value="0.1" step="0.05" min="0.01">
+    </div>
+  </div>
+  <details>
+    <summary>Advanced: TPI settings &amp; target pitches</summary>
+    <div class="grid" style="margin-top:10px">
+      <div style="grid-column: 1 / -1">
+        <label for="tpi">Your gearbox's TPI dial settings (comma-separated &mdash; check the chart plate on your gearbox lid, this varies by lathe model)</label>
+        <textarea id="tpi">4,5,6,7,8,9,10,11,12,13,14,16,18,20,22,24,26,28,32,36,40,44,48,52,56,64,72,80,88,96,104,112,128,144,160,176,192,208,224</textarea>
+      </div>
+      <div style="grid-column: 1 / -1">
+        <label for="pitches">Target metric pitches (mm)</label>
+        <textarea id="pitches">0.25,0.35,0.4,0.45,0.5,0.7,0.8,1.0,1.25,1.5,1.75,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0</textarea>
+      </div>
+    </div>
+  </details>
+  <button id="run">Calculate</button>
+  <div id="error" class="err"></div>
+</div>
+
+<div class="panel" id="results" style="display:none">
+  <div id="summary"></div>
+  <table id="resultTable">
+    <thead>
+      <tr><th>Desired Pitch</th><th>Stud Gear</th><th>QC TPI</th><th>Actual Pitch</th><th>Error %</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<footer>
+  Everything runs locally in your browser &mdash; nothing is uploaded. TPI settings vary by lathe model/gearbox; verify yours against the dial chart on your machine before cutting.<br>
+  Source: <a href="https://github.com/bobneumann/stud-gear-metric-calc" target="_blank" rel="noopener">github.com/bobneumann/stud-gear-metric-calc</a>
+</footer>
+
+<script>
+function parseList(str) {
+  return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+}
+
+function errorTable(factory, gears, pitches, tpiList) {
+  const err = gears.map(() => new Array(pitches.length).fill(0));
+  const tpiFor = gears.map(() => new Array(pitches.length).fill(0));
+  gears.forEach((gear, gi) => {
+    const ratio = 25.4 * (gear / factory);
+    pitches.forEach((pitch, pi) => {
+      let bestE = Infinity, bestT = null;
+      for (const t of tpiList) {
+        const actual = ratio / t;
+        const e = Math.abs(actual - pitch) / pitch * 100;
+        if (e < bestE) { bestE = e; bestT = t; }
+      }
+      err[gi][pi] = bestE;
+      tpiFor[gi][pi] = bestT;
+    });
+  });
+  return { err, tpiFor };
+}
+
+function comb(n, k) {
+  if (k < 0 || k > n) return 0;
+  k = Math.min(k, n - k);
+  let r = 1;
+  for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+  return Math.round(r);
+}
+
+function* combinations(n, k) {
+  const idx = Array.from({length: k}, (_, i) => i);
+  if (k > n) return;
+  while (true) {
+    yield idx.slice();
+    let i = k - 1;
+    while (i >= 0 && idx[i] === i + n - k) i--;
+    if (i < 0) return;
+    idx[i]++;
+    for (let j = i + 1; j < k; j++) idx[j] = idx[j - 1] + 1;
+  }
+}
+
+function teethCost(combo, gears, factory) {
+  let t = 0;
+  for (const g of combo) t += (gears[g] === factory) ? 0 : gears[g];
+  return t;
+}
+
+function bestSetBruteForce(err, gears, factory, count, tol) {
+  const n = gears.length, p = err[0].length;
+  let bestCombo = null, bestScore = null;
+  for (const combo of combinations(n, count)) {
+    let maxE = 0, sumE = 0;
+    for (let pi = 0; pi < p; pi++) {
+      let m = Infinity;
+      for (const g of combo) if (err[g][pi] < m) m = err[g][pi];
+      if (m > maxE) maxE = m;
+      sumE += m;
+    }
+    const bucket = Math.round(maxE / tol) * tol;
+    const teeth = teethCost(combo, gears, factory);
+    const score = [bucket, teeth, sumE];
+    if (bestScore === null || score[0] < bestScore[0] ||
+        (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
+        (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2])) {
+      bestScore = score; bestCombo = combo;
+    }
+  }
+  return bestCombo;
+}
+
+function bestSetGreedy(err, gears, factory, count, tol) {
+  const n = gears.length, p = err[0].length;
+  const chosen = [];
+  let remaining = new Array(p).fill(Infinity);
+  for (let step = 0; step < count; step++) {
+    let bestG = null, bestScore = null;
+    for (let g = 0; g < n; g++) {
+      if (chosen.includes(g)) continue;
+      let maxE = 0, sumE = 0;
+      for (let pi = 0; pi < p; pi++) {
+        const m = Math.min(remaining[pi], err[g][pi]);
+        if (m > maxE) maxE = m;
+        sumE += m;
+      }
+      const teeth = teethCost(chosen.concat([g]), gears, factory);
+      const bucket = Math.round(maxE / tol) * tol;
+      const score = [bucket, teeth, sumE];
+      if (bestScore === null || score[0] < bestScore[0] ||
+          (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
+          (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2])) {
+        bestScore = score; bestG = g;
+      }
+    }
+    chosen.push(bestG);
+    for (let pi = 0; pi < p; pi++) remaining[pi] = Math.min(remaining[pi], err[bestG][pi]);
+  }
+  return chosen;
+}
+
+function selectGearSet(factory, gearLo, gearHi, count, pitches, tpiList, tol) {
+  const gears = [];
+  for (let g = gearLo; g <= gearHi; g++) gears.push(g);
+  const { err, tpiFor } = errorTable(factory, gears, pitches, tpiList);
+  const BRUTE_LIMIT = 2_000_000;
+  let chosenIdx = (comb(gears.length, count) <= BRUTE_LIMIT)
+    ? bestSetBruteForce(err, gears, factory, count, tol)
+    : bestSetGreedy(err, gears, factory, count, tol);
+  chosenIdx = chosenIdx.slice().sort((a, b) => gears[a] - gears[b]);
+
+  const rows = pitches.map((pitch, pi) => {
+    let bestHere = Infinity;
+    for (const g of chosenIdx) if (err[g][pi] < bestHere) bestHere = err[g][pi];
+    let gi = null, giCost = Infinity;
+    for (const g of chosenIdx) {
+      if (err[g][pi] <= bestHere + tol) {
+        const cost = (gears[g] === factory) ? 0 : gears[g];
+        if (cost < giCost) { giCost = cost; gi = g; }
+      }
+    }
+    return {
+      pitch, gear: gears[gi], tpi: tpiFor[gi][pi],
+      actual: 25.4 * (gears[gi] / factory) / tpiFor[gi][pi],
+      errorPct: err[gi][pi], isFactory: gears[gi] === factory,
+    };
+  });
+  return { gearSet: chosenIdx.map(i => gears[i]), rows };
+}
+
+document.getElementById('run').addEventListener('click', () => {
+  const errDiv = document.getElementById('error');
+  errDiv.textContent = '';
+  try {
+    const factory = parseInt(document.getElementById('factory').value, 10);
+    const lowRaw = document.getElementById('low').value;
+    const gearLo = lowRaw ? parseInt(lowRaw, 10) : Math.max(16, factory - 5);
+    const gearHi = parseInt(document.getElementById('high').value, 10);
+    const count = parseInt(document.getElementById('count').value, 10);
+    const tol = parseFloat(document.getElementById('tolerance').value);
+    const pitches = parseList(document.getElementById('pitches').value);
+    const tpiList = parseList(document.getElementById('tpi').value);
+
+    if (!factory || !gearHi || !count || !pitches.length || !tpiList.length) {
+      throw new Error('Fill in all fields.');
+    }
+    if (gearHi - gearLo + 1 < count) {
+      throw new Error('Gear range too narrow for the requested count.');
+    }
+    const n = gearHi - gearLo + 1;
+    if (comb(n, count) > 30_000_000) {
+      throw new Error(`Search space too large (${n} gears choose ${count}) \u2014 narrow the range or lower the count.`);
+    }
+
+    const { gearSet, rows } = selectGearSet(factory, gearLo, gearHi, count, pitches, tpiList, tol);
+
+    document.getElementById('summary').innerHTML =
+      `<div>Factory stud gear: <b>${factory}T</b> &nbsp;|&nbsp; search range: <b>${gearLo}-${gearHi}T</b> &nbsp;|&nbsp; gears picked: <b>${count}</b></div>` +
+      `<div class="gearset">Gear set to cut: <b>${gearSet.map(g => g === factory ? g + ' (factory)' : g).join(', ')}</b></div>`;
+
+    const tbody = document.querySelector('#resultTable tbody');
+    tbody.innerHTML = '';
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.pitch}</td><td class="${r.isFactory ? 'free' : ''}">${r.gear}${r.isFactory ? ' \u2605' : ''}</td>` +
+        `<td>${r.tpi}</td><td>${r.actual.toFixed(4)}</td><td>${r.errorPct.toFixed(4)}</td>`;
+      tbody.appendChild(tr);
+    }
+    document.getElementById('results').style.display = 'block';
+  } catch (e) {
+    errDiv.textContent = e.message;
+  }
+});
+
+document.getElementById('run').click();
+</script>
+</body>
+</html>
